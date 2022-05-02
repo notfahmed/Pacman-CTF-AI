@@ -14,7 +14,7 @@ isRed = True
 
 
 def createTeam(firstIndex, secondIndex, isRed_,
-               first='DefensiveReflexAgent', second='DefensiveReflexAgent'):
+               first='OffensiveReflexAgent', second='DefensiveReflexAgent'):
     """
     This function should return a list of two agents that will form the
     team, initialized using firstIndex and secondIndex as their agent
@@ -175,3 +175,77 @@ class DefensiveReflexAgent(CaptureAgent):
         else:
             return successor
 
+
+class OffensiveReflexAgent(CaptureAgent):
+    '''TODO'''
+    """
+    An offensive agent that will immediately head for the side of the opposing
+    team and will never chase agents on its own team side. We use several
+    features and weights that we iterated to improve by viewing games and
+    results. The agent also has limits on carrying so that it will go back
+    to the other side after collecting a number of food.
+    """
+
+    opps = None
+
+    def registerInitialState(self, gameState):
+        self.start = gameState.getAgentPosition(self.index)
+        CaptureAgent.registerInitialState(self, gameState)
+        CaptureAgent.getOpponents(self, gameState)
+
+    def chooseAction(self, gameState):
+        #TODO
+        targets = CaptureAgent.getFood(self, gameState)
+        powerUps = CaptureAgent.getCapsules(self, gameState)
+        score = CaptureAgent.getScore(self, gameState)
+        actions = gameState.getLegalActions(self.index)
+
+        '''IDEAS AND DECISION TREE:
+        if predetermined path, go route with safety variable,
+            if safety on, go full route with no questions asked
+            else, attempt with avoid ghost on
+        else, determine new goal
+
+        goal:
+        if score is > 0, use DefensiveReflexAgent chooseAction
+            COMMENT: this possible will not be implemented if coordination fails
+        else if score + run > 0, return home safely goal
+        else:
+            if ghosts threat, determine run weight:
+                if run < 15% of food left, continue run
+                else, attempt returnHome
+            else, continue run
+
+            else, continue search'''
+        def returnHome():
+            '''Decisions will be based on safe routing home
+                This will be determined on ghost positions
+                First, determine capsule weight and worth:
+                    if score + run > 0, capsule avoidance off
+                    if food amount > 50% of food left, find capsules
+                if ghosts cannot reach path for pacman, set goal path home with safety on
+                else, attempt goal path with safety off
+
+                '''
+            ## TODO:
+        def avoid():
+            '''This will be the function to avoid ghosts in case safety is off
+            decisions will be based on prediction and ghost locations
+            params are self, gameState, run(current carrying food), and capsuleWorth'''
+            ## TODO:
+        def getFeatures():
+            ## TODO:
+            return 0
+
+
+
+
+        return random.choice(actions)
+
+
+
+
+
+    def evaluationFunction(self, gameState):
+        #to do
+        return 0
