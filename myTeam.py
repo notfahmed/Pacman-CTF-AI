@@ -187,18 +187,31 @@ class OffensiveReflexAgent(CaptureAgent):
     """
 
     opps = None
+    path = []
+    safety = True
+    totalFood = 0
+    homexCoord = 0
 
     def registerInitialState(self, gameState):
         self.start = gameState.getAgentPosition(self.index)
         CaptureAgent.registerInitialState(self, gameState)
-        CaptureAgent.getOpponents(self, gameState)
+        global opps
+        global totalFood
+        global homexCoord
+        global safety
+
+        opps = self.getOpponents(gameState)
+        totalFood = len(self.getFood(gameState).asList())
+        if gameState.isOnRedTeam(self.index):
+            homexCoord = (gameState.data.layout.width // 2) -1
+        else:
+            homexCoord = gameState.data.layout.width // 2
+        safety = True
+
 
     def chooseAction(self, gameState):
         #TODO
-        targets = CaptureAgent.getFood(self, gameState)
-        powerUps = CaptureAgent.getCapsules(self, gameState)
-        score = CaptureAgent.getScore(self, gameState)
-        actions = gameState.getLegalActions(self.index)
+        # start = time.time()
 
         '''IDEAS AND DECISION TREE:
         if predetermined path, go route with safety variable,
@@ -214,38 +227,280 @@ class OffensiveReflexAgent(CaptureAgent):
             if ghosts threat, determine run weight:
                 if run < 15% of food left, continue run
                 else, attempt returnHome
-            else, continue run
-
-            else, continue search'''
-        def returnHome():
-            '''Decisions will be based on safe routing home
-                This will be determined on ghost positions
-                First, determine capsule weight and worth:
-                    if score + run > 0, capsule avoidance off
-                    if food amount > 50% of food left, find capsules
-                if ghosts cannot reach path for pacman, set goal path home with safety on
-                else, attempt goal path with safety off
+            else, continue run'''
+        """
 
                 '''
+            return 0
             ## TODO:
         def avoid():
             '''This will be the function to avoid ghosts in case safety is off
             decisions will be based on prediction and ghost locations
             params are self, gameState, run(current carrying food), and capsuleWorth'''
+            return 0
             ## TODO:
         def getFeatures():
             ## TODO:
             return 0
 
+        def capsuleWeight():
+            #TODO:
+            return 0"""
+
+        global path
+        global safety
+        global totalFood
+        global opps
+
+        targets = self.getFood(gameState).asList()
+        #powerUps = self.getCapsules(gameState)
+        score = CaptureAgent.getScore(self, gameState)
+        actions = gameState.getLegalActions(self.index)
+
+        run = gameState.getAgentState(self.index).numCarrying
+        pathTest = "yes" if self.path else "no"
+        print("if path: " , pathTest)
+        if self.path and safety:
+            print("in safety branch")
+            return self.makeMove(gameState, actions)
 
 
+        elif self.path and not safety:
+            print("in not safety branch")
+            myPos = gameState.getAgentState(self.index).getPosition()
+            for o in opps:
+                enemyPos = gameState.getAgentState(o).getPosition()
+                #if self.getMazeDistance(myPos, enemyPos) < 3:
+                    #return self.avoid(gameState, actions)
+                #else:
+                    #return self.makeMove(gameState, actions)
 
-        return random.choice(actions)
+        else:
+            print("start goal generation")
+            if score + run > 0 and gameState.getAgentState(self.index).isPacman:
+                self.path = self.returnHome(gameState)
+                if self.path == False:
+                    print("did not find a path")
+                    return random.choice(actions)
+
+            elif len(targets) < run and gameState.getAgentState(self.index).isPacman:
+                self.path = self.returnHome(gameState)
+                if self.path == False:
+                    print("did not find a path")
+                    return random.choice(actions)
+
+            else:
+                self.path = self.genGoal(gameState, targets)
+                safety = self.calculateSafety(gameState)
+                if self.path == False:
+                    print("did not find a path")
+                    return random.choice(actions)
+
+        #after decision tree
+        return self.makeMove(gameState, actions)
+
+    def avoid(self, gameState, actions):
+        myPos = gameState.getAgentState(self.index).getPosition()
+        global opps
+        for o in opps:
+            enemyPos = gameState.getAgentState(o).getPosition()
+            enemyDir = gameState.getAgentState(o).getDirection()
+            gPathing = self.aStar(gameState, o, myPos)
+            ghostPath = self.generatePath(gPathing[0], gPathing[1], o)
+            if ghostPath:
+                if len(ghostPath) > 2:
+                    continue
+                '''else:
+                    dir = (ghostPath[0]-enemyPos[0], ghostPath[1]-enemyPos[1])
+                    print("dir: ", dir)
+                    enemyPreAction = None
+                    if dir[0] == 0:
+                        if dir[1] > 0:
+                            enemyPreAction = gameState.data.'''
 
 
+        return self.makeMove(gameState, actions)
 
 
+    def calculateSafety(self, gameState):
+        global path
+        global opps
+        if self.path:
+            for o in opps:
+                enemyPos = gameState.getAgentState(o).getPosition()
+                pathCounter = 1
+                for p in self.path:
+                    if self.getMazeDistance(enemyPos, p) <= pathCounter:
+                        gPathing = self.aStar(gameState, o, p)
+                        ghostPath = self.generatePath(gPathing[0], gPathing[1], o)
+                        if len(ghostPath) < len(self.path):
+                            return False
+                    else:
+                        pathCounter += 1
+            return True
 
-    def evaluationFunction(self, gameState):
-        #to do
-        return 0
+    def makeMove(self, gameState, actions):
+        global path
+        nextMove = self.path.pop(0)
+        bestAction = None
+        bestDist = 9999
+        for action in actions:
+            successor = self.getSuccessor(gameState, self.index, action)
+            pos2 = successor.getAgentPosition(self.index)
+            dist = self.getMazeDistance(nextMove, pos2)
+            if dist < bestDist:
+                bestAction = action
+                bestDist = dist
+        if len(self.path) == 0:
+            self.path = None
+        return bestAction
+
+
+    def genGoal(self, gameState, targets):
+        if len(targets) > 0:
+            myPos = gameState.getAgentState(self.index).getPosition()
+            #min dist finder
+            minDist = 9999999
+            bestT = None
+            for t in targets:
+                if bestT == None:
+                    minDist = self.getMazeDistance(myPos, t)
+                    bestT = t
+                    continue
+                currFDist = self.getMazeDistance(myPos, t)
+                if currFDist < minDist:
+                    bestT = t
+                    minDist = currFDist
+
+            closedList = self.aStar(gameState, self.index, bestT)
+            if closedList != False:
+                return self.generatePath(closedList[0],closedList[1], self.index)
+            return False
+
+
+    def returnHome(self, gameState):
+        '''Decisions will be based on safe routing home
+            This will be determined on ghost positions
+            First, determine capsule weight and worth:
+                if score + run > 0, capsule avoidance off
+                if food amount > 50% of food left, find capsules
+            if ghosts cannot reach path for pacman, set goal path home with safety on
+            else, attempt goal path with safety off'''
+        myPos = gameState.getAgentState(self.index).getPosition()
+        global homexCoord
+        targets = []
+        for i in range(1,gameState.data.layout.height-1):
+            coord = (homexCoord, i)
+            if not gameState.data.layout.isWall(coord):
+                targets.append((homexCoord, i))
+        minDist = 9999999
+        bestT = None
+        for t in targets:
+            if bestT == None:
+                minDist = self.getMazeDistance(myPos, t)
+                bestT = t
+                continue
+            currFDist = self.getMazeDistance(myPos, t)
+            if currFDist < minDist:
+                bestT = t
+                minDist = currFDist
+
+        c = self.aStar(gameState, self.index,bestT)
+        if c != False:
+            return self.generatePath(c[0], c[1], self.index)
+        return False
+
+    def generatePath(self, closedList, end, agentI):
+        if closedList != False:
+            fullPath = []
+            curr = end
+            while closedList[curr][0] != None:
+                fullPath.insert(0, curr)
+                curr = closedList[curr][0].getAgentState(agentI).getPosition()
+            return fullPath
+        else:
+            return False
+
+    def aStar(self, gameState, agentI, target):
+        print("start aStar func, target: ", target)
+        openList = []
+        closedList = {}
+        startPos = gameState.getAgentState(agentI).getPosition()
+        openList.append([None, gameState, 0 , self.getMazeDistance(startPos, target)])
+        while openList:
+            #print("current list size: ", len(openList))
+            q = openList.pop(0)
+            currPos = q[1].getAgentPosition(agentI)
+            #print("q position: ", currPos)
+            if currPos in closedList.keys():
+                if closedList[currPos][2] >= q[3]:
+                    #print("updating closedList")
+                    closedList[currPos] = [q[0],q[2],q[3]]
+            else:
+                #print("adding ", currPos, " to closedList")
+                closedList[currPos] = [q[0],q[2],q[3]]
+            #if found stop insert here
+            #print("closedList: ", closedList, "\n\n")
+            #print("entering actions loop")
+            #print("list of actions: ",q[1].getLegalActions(self.index))
+            for a in q[1].getLegalActions(agentI):
+                print("action: ",a)
+
+                #conditional to determine if successor gets added to open list
+                add = True
+
+                #generation of successor
+                #print("start successor gen")
+                succ = self.getSuccessor(q[1], agentI, a)
+                succPos = succ.getAgentPosition(agentI)
+                #print("passed successor gen ", succPos)
+
+                #print("test if goal")
+                if succPos == target:
+                    print("goal")
+                    closedList[succPos] = [q[1], 0, 0]
+                    return [closedList, succPos]
+                #print("no goal\n")
+                #index 3 f cost calculation
+                #print("calculating fcost")
+                fCost = (q[2]+1) + self.getMazeDistance(succPos, target)
+                #print("fCost of ", succPos ,": ",fCost,"\n")
+
+                '''if openlist contains node with lower f cost, skip this node
+                if closedList contains node with lower f cost, skip this node
+                else, add node to openList'''
+                insertIndex = 0
+                for o in openList:
+                    if o[1].getAgentState(agentI).getPosition() == succPos and o[3] < fCost:
+                        #print("openList better cost")
+                        add = False
+                        break
+                    elif o[3] > fCost:
+                        break
+                    else:
+                        insertIndex += 1
+                if succPos in closedList:
+                    if closedList[succPos][2] < fCost:
+                        #print("closedList better cost")
+                        add = False
+                if add:
+                    #print("adding ", a, "to reach ", succ.getAgentPosition(self.index), "at index ", insertIndex)
+                    #print("adding ", [q[1], succ, q[2]+1, fCost], " to openList")
+                    openList.insert(insertIndex, [q[1], succ, q[2]+1, fCost])
+                #end Loop
+            #end loop
+        print("no path")
+        return False
+
+
+    def getSuccessor(self, gameState, agentI, action):
+        """
+    Finds the next successor which is a grid position (location tuple).
+    """
+        successor = gameState.generateSuccessor(agentI, action)
+        pos = successor.getAgentState(agentI).getPosition()
+        if pos != nearestPoint(pos):
+            # Only half a grid position was covered
+            return successor.generateSuccessor(agentI, action)
+        else:
+            return successor
