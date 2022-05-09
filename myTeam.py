@@ -251,6 +251,7 @@ class OffensiveReflexAgent(CaptureAgent):
 
     def getFeatures(self, gameState, action):
         global offPosition
+        global stuck
 
         features = util.Counter()
         successor = self.getSuccessor(gameState, action)
@@ -384,5 +385,5 @@ class OffensiveReflexAgent(CaptureAgent):
 
     def getWeights(self, gameState, action):
         return {'foodLeft': -100, 'minDistanceToFood': -1, 'minEnemyDistance': 100, 'middleBorder': -100,
-                'invaders': 20, 'eaten': -10, 'capsule': -1000, 'dead': -1, 'stop': -75, 'reverse': -50,
+                'invaders': 20, 'eaten': -10, 'capsule': 1000, 'dead': -1, 'stop': -75, 'reverse': -50,
                 'distanceFromFriendly': 1, 'isGhost': -10}
