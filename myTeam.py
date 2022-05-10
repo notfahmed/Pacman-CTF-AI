@@ -86,7 +86,6 @@ class DefensiveReflexAgent(CaptureAgent):
         features['invaders'] = invaders
 
         # Make sure my defender does not go into the enemy territory and become a pacman
-
         if isRed:
             if not gameState.isRed(currentPosition):
                 myPacman = 1
