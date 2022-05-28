@@ -8,4 +8,4 @@ Pacman CTF game screenshot
 
 Code for AI is found in myteams.py
 
-Explanation for the code is found in here: https://github.com/notfahmed/CS4375_Project/blob/main/Pacman_CTF_Project_Report.pdf
+To learn more about my approach and the explanation for the code, please read the Report found here: https://github.com/notfahmed/CS4375_Project/blob/main/Pacman_CTF_Project_Report.pdf
